@@ -507,7 +507,7 @@ runuser -l $SUDOUSER -c "ansible-playbook ~/deletestucknodes.yml"
 
 
 # Create Ansible Hosts File for Metrics and Logging
-echo $(date) " - Create Ansible Hosts file"
+echo $(date) " - Create Ansible Hosts file for deployment of Logging and Metrics"
 
 cat > /etc/ansible/hosts <<EOF
 # Create an OSEv3 group that contains the masters and nodes groups
@@ -570,6 +570,39 @@ $MASTER-0
 [nodes]
 EOF
 
+# Loop to add Masters
+
+for (( c=0; c<$MASTERCOUNT; c++ ))
+do
+  echo "$MASTER-$c openshift_node_labels=\"{'type': 'master', 'zone': 'default'}\" openshift_hostname=$MASTER-$c" >> /etc/ansible/hosts
+done
+
+# Loop to add Infra Nodes
+
+for (( c=0; c<$INFRACOUNT; c++ ))
+do
+  echo "$INFRA-$c openshift_node_labels=\"{'type': 'infra', 'zone': 'default'}\" openshift_hostname=$INFRA-$c" >> /etc/ansible/hosts
+done
+
+# Loop to add Nodes
+
+for (( c=0; c<$NODECOUNT; c++ ))
+do
+  echo "$NODE-$c openshift_node_labels=\"{'type': 'app', 'zone': 'default'}\" openshift_hostname=$NODE-$c" >> /etc/ansible/hosts
+done
+
+
+# Create new_nodes group
+
+cat >> /etc/ansible/hosts <<EOF
+
+# host group for adding new nodes
+[new_nodes]
+EOF
+
+echo $(date) " - Deployment of Logging and Metrics"
+
+runuser -l $SUDOUSER -c "ansible-playbook openshift-ansible/playbooks/byo/config.yml"
 
 # Delete postinstall files
 #echo $(date) "- Deleting post installation files"

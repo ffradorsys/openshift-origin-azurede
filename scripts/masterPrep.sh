@@ -17,7 +17,7 @@ yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarc
 
 sed -i -e "s/^enabled=1/enabled=0/" /etc/yum.repos.d/epel.repo
 
-# Only install Ansible and pyOpenSSL on Master-0 Node
+# Only install Ansible, Java and pyOpenSSL on Master-0 Node
 
 if hostname -f|grep -- "-0" >/dev/null
 then
@@ -29,8 +29,12 @@ fi
 echo $(date) " - Installing Docker 1.12.x"
 
 yum -y install docker
-yum -y --enablerepo=epel install htop
+
 sed -i -e "s#^OPTIONS='--selinux-enabled'#OPTIONS='--selinux-enabled --insecure-registry 172.30.0.0/16'#" /etc/sysconfig/docker
+
+
+echo $(date) " - Installing htop"
+yum -y --enablerepo=epel install htop
 
 # Create thin pool logical volume for Docker
 echo $(date) " - Creating thin pool logical volume for Docker and staring service"
