@@ -375,7 +375,7 @@ openshift_use_dnsmasq=True
 openshift_master_default_subdomain=$ROUTING
 openshift_override_hostname_check=true
 osm_use_cockpit=false
-#os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
+os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
 #console_port=443
 openshift_cloudprovider_kind=azure
 osm_default_node_selector='type=app'
@@ -505,17 +505,83 @@ runuser -l $SUDOUSER -c "ansible-playbook ~/setup-azure-node-master.yml"
 runuser -l $SUDOUSER -c "ansible-playbook ~/setup-azure-node.yml"
 runuser -l $SUDOUSER -c "ansible-playbook ~/deletestucknodes.yml"
 
+
+# Create Ansible Hosts File for Metrics and Logging
+echo $(date) " - Create Ansible Hosts file"
+
+cat > /etc/ansible/hosts <<EOF
+# Create an OSEv3 group that contains the masters and nodes groups
+[OSEv3:children]
+masters
+nodes
+etcd
+master0
+new_nodes
+
+# Set variables common for all OSEv3 hosts
+[OSEv3:vars]
+ansible_ssh_user=$SUDOUSER
+ansible_become=yes
+openshift_install_examples=true
+openshift_deployment_type=origin
+openshift_release=v3.6
+docker_udev_workaround=True
+openshift_use_dnsmasq=True
+openshift_master_default_subdomain=$ROUTING
+openshift_override_hostname_check=true
+osm_use_cockpit=false
+os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
+#console_port=443
+openshift_cloudprovider_kind=azure
+osm_default_node_selector='type=app'
+openshift_disable_check=disk_availability,memory_availability
+# default selectors for router and registry services
+openshift_router_selector='type=infra'
+openshift_registry_selector='type=infra'
+
+openshift_metrics_install_metrics=True
+openshift_metrics_cassandra_storage_type=dynamic
+
+openshift_logging_install_logging=True
+openshift_logging_es_pvc_dynamic=True
+openshift_logging_master_public_url=$MASTERPUBLICIPHOSTNAME
+openshift_logging_es_memory_limit=4Gi
+
+openshift_master_cluster_method=native
+openshift_master_cluster_hostname=$MASTERPUBLICIPHOSTNAME
+openshift_master_cluster_public_hostname=$MASTERPUBLICIPHOSTNAME
+openshift_master_cluster_public_vip=$MASTERPUBLICIPADDRESS
+
+# Enable HTPasswdPasswordIdentityProvider
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
+
+# host group for masters
+[masters]
+$MASTER-[0:${MASTERLOOP}]
+
+# host group for etcd
+[etcd]
+$MASTER-[0:${MASTERLOOP}]
+
+[master0]
+$MASTER-0
+
+# host group for nodes
+[nodes]
+EOF
+
+
 # Delete postinstall files
-echo $(date) "- Deleting post installation files"
-
-
-rm /home/${SUDOUSER}/addocpuser.yml
-rm /home/${SUDOUSER}/assignclusteradminrights.yml
-rm /home/${SUDOUSER}/dockerregistry.yml
-rm /home/${SUDOUSER}/vars.yml
-rm /home/${SUDOUSER}/setup-azure-master.yml
-rm /home/${SUDOUSER}/setup-azure-node-master.yml
-rm /home/${SUDOUSER}/setup-azure-node.yml
-rm /home/${SUDOUSER}/deletestucknodes.yml
+#echo $(date) "- Deleting post installation files"
+#
+#
+#rm /home/${SUDOUSER}/addocpuser.yml
+#rm /home/${SUDOUSER}/assignclusteradminrights.yml
+#rm /home/${SUDOUSER}/dockerregistry.yml
+#rm /home/${SUDOUSER}/vars.yml
+#rm /home/${SUDOUSER}/setup-azure-master.yml
+#rm /home/${SUDOUSER}/setup-azure-node-master.yml
+#rm /home/${SUDOUSER}/setup-azure-node.yml
+#rm /home/${SUDOUSER}/deletestucknodes.yml
 
 echo $(date) " - Script complete"

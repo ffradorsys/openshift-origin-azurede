@@ -1,6 +1,5 @@
-# OpenShift Origin Deployment Template
+# OpenShift Origin Azure Deployment Template
 
-Bookmark [aka.ms/OpenShift](http://aka.ms/OpenShift) for future reference.
 
 For the **OpenShift Container Platform** refer to https://github.com/Microsoft/openshift-container-platform
 
@@ -10,9 +9,9 @@ Change log located in CHANGELOG.md
 
 Current template deploys OpenShift Origin 3.6 (1.6).
 
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FMicrosoft%2Fopenshift-origin%2Fmaster%2Fazuredeploy.json" target="_blank"><img src="http://azuredeploy.net/deploybutton.png"/></a>
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fffradorsys%2Fopenshift-origin-azure%2Fmaster%2Fazuredeploy.json" target="_blank"><img src="http://azuredeploy.net/deploybutton.png"/></a>
 
-This template deploys OpenShift Origin with basic username / password for authentication to OpenShift. You can select to use either CentOS or RHEL for the OS. It includes the following resources:
+This template deploys OpenShift Origin with basic username / password for authentication to OpenShift. It includes the following resources:
 
 |Resource           |Properties                                                                                                                          |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------|
@@ -49,8 +48,8 @@ From a Linux or Mac, you can just use the ssh-keygen command. Once you are finis
 You will need to create a Key Vault to store your SSH Private Key that will then be used as part of the deployment.
 
 1. **Create Key Vault using Powershell**<br/>
-  a.  Create new resource group: New-AzureRMResourceGroup -Name 'ResourceGroupName' -Location 'West US'<br/>
-  b.  Create key vault: New-AzureRmKeyVault -VaultName 'KeyVaultName' -ResourceGroup 'ResourceGroupName' -Location 'West US'<br/>
+  a.  Create new resource group: New-AzureRMResourceGroup -Name 'ResourceGroupName' -Location 'Westeurope'<br/>
+  b.  Create key vault: New-AzureRmKeyVault -VaultName 'KeyVaultName' -ResourceGroup 'ResourceGroupName' -Location 'Westeurope'<br/>
   c.  Create variable with sshPrivateKey: $securesecret = ConvertTo-SecureString -String '[copy ssh Private Key here - including line feeds]' -AsPlainText -Force<br/>
   d.  Create Secret: Set-AzureKeyVaultSecret -Name 'SecretName' -SecretValue $securesecret -VaultName 'KeyVaultName'<br/>
   e.  Enable the Key Vault for Template Deployments: Set-AzureRmKeyVaultAccessPolicy -VaultName 'KeyVaultName' -ResourceGroupName 'ResourceGroupName' -EnabledForTemplateDeployment
@@ -146,7 +145,7 @@ To assign permissions, please follow the instructions from Azure CLI 1.0 Step 2 
 8.  masterInstanceCount: Number of Masters nodes to deploy
 8.  infraInstanceCount: Number of infra nodes to deploy
 9.  nodeInstanceCount: Number of Nodes to deploy
-9.  dataDiskSize: Size of data disk to attach to nodes for Docker volume - valid sizes are 128 GB, 512 GB and 1023 GB
+9.  dataDiskSize: Size of data disk to attach to nodes for Docker volume - valid sizes are 64 GB, 128 GB, 512 GB and 1023 GB
 10. adminUsername: Admin username for both OS login and OpenShift login
 11. openshiftPassword: Password for OpenShift login
 12. sshPublicKey: Copy your SSH Public Key here
@@ -165,7 +164,7 @@ Once you have collected all of the prerequisites for the template, you can deplo
 For Azure CLI 2.0, sample commands:
 
 ```bash
-az group create --name OpenShiftTestRG --location WestUS2
+az group create --name OpenShiftTestRG --location Westeurope
 ```
 while in the folder where your local fork resides
 
@@ -175,7 +174,7 @@ az group deployment create --resource-group OpenShiftTestRG --template-file azur
 
 Monitor deployment via CLI or Portal and get the console URL from outputs of successful deployment which will look something like (if using sample parameters file and "West US 2" location):
 
-`https://me-master1.westus2.cloudapp.azure.com:8443/console`
+`https://me-master1.westeurope.cloudapp.azure.com:8443/console`
 
 The cluster will use self-signed certificates. Accept the warning and proceed to the login page.
 

@@ -22,13 +22,14 @@ sed -i -e "s/^enabled=1/enabled=0/" /etc/yum.repos.d/epel.repo
 if hostname -f|grep -- "-0" >/dev/null
 then
    echo $(date) " - Installing Ansible and pyOpenSSL"
-   yum -y --enablerepo=epel install ansible pyOpenSSL
+   yum -y --enablerepo=epel install ansible pyOpenSSL java-1.8.0-openjdk-headless.x86_64
 fi
 
 # Install Docker 1.12.x
 echo $(date) " - Installing Docker 1.12.x"
 
 yum -y install docker
+yum -y --enablerepo=epel install htop
 sed -i -e "s#^OPTIONS='--selinux-enabled'#OPTIONS='--selinux-enabled --insecure-registry 172.30.0.0/16'#" /etc/sysconfig/docker
 
 # Create thin pool logical volume for Docker
