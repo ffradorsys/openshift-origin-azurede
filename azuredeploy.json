@@ -8,7 +8,7 @@
 				"description": "The base URL where artifacts required by this template are located. When the template is deployed using the accompanying scripts, a private location in the subscription will be used and this value will be automatically generated.",
 				"artifactsBaseUrl": ""
 			},
-			"defaultValue": "https://raw.githubusercontent.com/ffradorsys/openshift-origin-azure/master"
+			"defaultValue": "https://raw.githubusercontent.com/ffradorsys/openshift-origin-azurede/master/"
 		},
 		"masterVmSize": {
 			"type": "string",
@@ -82,13 +82,37 @@
 				"description": "OpenShift Infra Node VM(s) size"
 			}
 		},
+		"glusterVmSize": {
+			"type": "string",
+			"defaultValue": "Standard_DS2_v2",
+			"allowedValues": [
+				"Standard_A4", "Standard_A5", "Standard_A6", "Standard_A7", "Standard_A8", "Standard_A9", "Standard_A10", "Standard_A11",
+				"Standard_D1", "Standard_D2", "Standard_D3", "Standard_D4",
+				"Standard_D11", "Standard_D12", "Standard_D13", "Standard_D14",
+				"Standard_D1_v2", "Standard_D2_v2", "Standard_D3_v2", "Standard_D4_v2", "Standard_D5_v2",
+				"Standard_D11_v2", "Standard_D12_v2", "Standard_D13_v2", "Standard_D14_v2",
+				"Standard_G1", "Standard_G2", "Standard_G3", "Standard_G4", "Standard_G5",
+				"Standard_D1_v2", "Standard_DS2", "Standard_DS3", "Standard_DS4",
+				"Standard_DS11", "Standard_DS12", "Standard_DS13", "Standard_DS14",
+				"Standard_DS1_v2", "Standard_DS2_v2", "Standard_DS3_v2", "Standard_DS4_v2", "Standard_DS5_v2",
+				"Standard_DS11_v2", "Standard_DS12_v2", "Standard_DS13_v2", "Standard_DS14_v2",
+				"Standard_GS1", "Standard_GS2", "Standard_GS3", "Standard_GS4", "Standard_GS5",
+				"Standard_D2_v3", "Standard_D4_v3", "Standard_D8_v3", "Standard_D16_v3", "Standard_D32_v3", "Standard_D64_v3",
+				"Standard_D2s_v3", "Standard_D4s_v3", "Standard_D8s_v3", "Standard_D16s_v3", "Standard_D32s_v3", "Standard_D64s_v3",
+				"Standard_E2_v3", "Standard_E4_v3", "Standard_E8_v3", "Standard_E16_v3", "Standard_E32_v3", "Standard_E64_v3",
+				"Standard_E2s_v3", "Standard_E4s_v3", "Standard_E8s_v3", "Standard_E16s_v3", "Standard_E32s_v3", "Standard_E64s_v3"
+			],
+			"metadata": {
+				"description": "OpenShift GlusterFS Node VM(s) size"
+			}
+		},
 		"openshiftClusterPrefix": {
 			"type": "string",
 			"defaultValue": "oso",
 			"minLength": 1,
 			"maxLength": 20,
 			"metadata": {
-				"description": "OpenShift cluster prefix.  Used to generate master, infra and node hostnames.  Maximum of 20 characters."
+				"description": "OpenShift cluster prefix.  Used to generate master, infra, gluster and node hostnames.  Maximum of 20 characters."
 			}
 		},
 		"masterInstanceCount": {
@@ -105,6 +129,14 @@
 			"allowedValues": [2, 3],
 			"metadata": {
 				"description": "Number of OpenShift infra nodes."
+			}
+		},
+		"glusterInstanceCount": {
+			"type": "int",
+			"defaultValue": 2,
+			"allowedValues": [2, 3],
+			"metadata": {
+				"description": "Number of OpenShift GlusterFS nodes."
 			}
 		},
 		"nodeInstanceCount": {
@@ -210,8 +242,10 @@
 		"openshiftMasterHostname": "[concat(variables('namingInfix'), '-master')]",
 		"openshiftNodeHostname": "[concat(variables('namingInfix'), '-node')]",
 		"openshiftInfraHostname": "[concat(variables('namingInfix'), '-infra')]",
+		"openshiftGlusterHostname": "[concat(variables('namingInfix'), '-gluster')]",
 		"newStorageAccountMaster": "[concat('master', uniqueString(concat(resourceGroup().id, 'msa')))]",
 		"newStorageAccountInfra": "[concat('infra', uniqueString(concat(resourceGroup().id, 'infra')))]",
+		"newStorageAccountGluster": "[concat('gluster', uniqueString(concat(resourceGroup().id, 'gluster')))]",
 		"newStorageAccountNodeOs": "[concat('nodeos', uniqueString(concat(resourceGroup().id, 'nodeossa')))]",
 		"newStorageAccountNodeData": "[concat('nodedata', uniqueString(concat(resourceGroup().id, 'nodedatasa')))]",
 		"newStorageAccountRegistry": "[concat('registry', uniqueString(concat(resourceGroup().id, 'registry')))]",
@@ -223,6 +257,7 @@
 		"masterSubnetName": "mastersubnet",
 		"nodeSubnetName": "nodesubnet",
 		"infraLbPublicIpDnsLabel": "[concat('infradns', uniqueString(concat(resourceGroup().id, 'infra')))]",
+		"glusterLbPublicIpDnsLabel": "[concat('glusterdns', uniqueString(concat(resourceGroup().id, 'gluster')))]",
 		"openshiftMasterPublicIpDnsLabel": "[concat('masterdns', uniqueString(concat(resourceGroup().id, 'master')))]",
 		"persistentVolume1Type": "Standard_LRS",
 
@@ -241,6 +276,15 @@
 		"infraLbBackendPoolId": "[concat(variables('infraLbId'),'/backendAddressPools/loadBalancerBackend')]",
 		"infraLbHttpProbeId": "[concat(variables('infraLbId'),'/probes/httpProbe')]",
 		"infraLbHttpsProbeId": "[concat(variables('infraLbId'),'/probes/httpsProbe')]",
+
+		"glusterLoadBalancerName": "[concat(variables('openshiftGlusterHostname'), 'lb')]",
+		"glusterPublicIpAddressId": "[resourceId('Microsoft.Network/publicIPAddresses', variables('glusterLbPublicIpDnsLabel'))]",
+		"glusterLbId": "[resourceId('Microsoft.Network/loadBalancers', variables('glusterLoadBalancerName'))]",
+		"glusterLbFrontEndConfigId": "[concat(variables('glusterLbId'), '/frontendIPConfigurations/loadBalancerFrontEnd')]",
+		"glusterLbBackendPoolId": "[concat(variables('glusterLbId'),'/backendAddressPools/loadBalancerBackend')]",
+		"glusterLbHttpProbeId": "[concat(variables('glusterLbId'),'/probes/httpProbe')]",
+		"glusterLbHttpsProbeId": "[concat(variables('glusterLbId'),'/probes/httpsProbe')]",
+
 		"osImage": "centos",
 		"centos": {
 			"publisher": "Openlogic",
@@ -258,8 +302,10 @@
 		"sshKeyPath": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
 		"nodePrepScriptUrl": "[concat(parameters('_artifactsLocation'), 'scripts/nodePrep.sh')]",
 		"masterPrepScriptUrl": "[concat(parameters('_artifactsLocation'), 'scripts/masterPrep.sh')]",
+		"glusterPrepScriptUrl": "[concat(parameters('_artifactsLocation'), 'scripts/glusterPrep.sh')]",
 		"nodePrepScriptFileName": "nodePrep.sh",
 		"masterPrepScriptFileName": "masterPrep.sh",
+		"glusterPrepScriptFileName": "glusterPrep.sh",
 		"clusterNodeDeploymentTemplateUrl": "[concat(parameters('_artifactsLocation'), 'nested/clusternode.json')]",
 		"openshiftDeploymentTemplateUrl": "[concat(parameters('_artifactsLocation'), 'nested/openshiftdeploy.json')]",
 		"vmSizesMap": {
@@ -594,6 +640,53 @@
 		}, {
 			"apiVersion": "[variables('apiVersionNetwork')]",
 			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[concat(variables('openshiftGlusterHostname'), '-nsg')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"securityRules": [{
+					"name": "allowSSHin_all",
+					"properties": {
+						"description": "Allow SSH in from all locations",
+						"protocol": "Tcp",
+						"sourcePortRange": "*",
+						"destinationPortRange": "22",
+						"sourceAddressPrefix": "*",
+						"destinationAddressPrefix": "*",
+						"access": "Allow",
+						"priority": 100,
+						"direction": "Inbound"
+					}
+				}, {
+					"name": "allowHTTPSIn_all",
+					"properties": {
+						"description": "Allow HTTPS connections from all locations",
+						"protocol": "Tcp",
+						"sourcePortRange": "*",
+						"destinationPortRange": "443",
+						"sourceAddressPrefix": "*",
+						"destinationAddressPrefix": "*",
+						"access": "Allow",
+						"priority": 200,
+						"direction": "Inbound"
+					}
+				}, {
+					"name": "allowHTTPIn_all",
+					"properties": {
+						"description": "Allow HTTP connections from all locations",
+						"protocol": "Tcp",
+						"sourcePortRange": "*",
+						"destinationPortRange": "80",
+						"sourceAddressPrefix": "*",
+						"destinationAddressPrefix": "*",
+						"access": "Allow",
+						"priority": 300,
+						"direction": "Inbound"
+					}
+				}]
+			}
+		}, {
+			"apiVersion": "[variables('apiVersionNetwork')]",
+			"type": "Microsoft.Network/networkSecurityGroups",
 			"name": "[concat(variables('openshiftNodeHostname'), '-nsg')]",
 			"location": "[variables('location')]",
 			"properties": {
@@ -688,6 +781,17 @@
 			}
 		}, {
 			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[variables('newStorageAccountGluster')]",
+			"location": "[variables('location')]",
+			"apiVersion": "[variables('apiVersionStorage')]",
+			"tags": {
+				"displayName": "GlusterStorageAccount"
+			},
+			"properties": {
+				"accountType": "[variables('vmSizesMap')[parameters('glusterVmSize')].storageAccountType]"
+			}
+		}, {
+			"type": "Microsoft.Storage/storageAccounts",
 			"name": "[variables('newStorageAccountNodeOs')]",
 			"location": "[variables('location')]",
 			"apiVersion": "[variables('apiVersionStorage')]",
@@ -746,6 +850,20 @@
 			}
 		}, {
 			"type": "Microsoft.Network/publicIPAddresses",
+			"name": "[variables('glusterLbPublicIpDnsLabel')]",
+			"location": "[variables('location')]",
+			"apiVersion": "[variables('apiVersionNetwork')]",
+			"tags": {
+				"displayName": "OpenShiftGlusterLBPublicIP"
+			},
+			"properties": {
+				"publicIPAllocationMethod": "Static",
+				"dnsSettings": {
+					"domainNameLabel": "[variables('glusterLbPublicIpDnsLabel')]"
+				}
+			}
+		}, {
+			"type": "Microsoft.Network/publicIPAddresses",
 			"name": "[variables('openshiftMasterPublicIpDnsLabel')]",
 			"location": "[variables('location')]",
 			"apiVersion": "[variables('apiVersionNetwork')]",
@@ -767,6 +885,12 @@
 		}, {
 			"type": "Microsoft.Compute/availabilitySets",
 			"name": "infraavailabilityset",
+			"location": "[variables('location')]",
+			"apiVersion": "[variables('apiVersionCompute')]",
+			"properties": {}
+		}, {
+			"type": "Microsoft.Compute/availabilitySets",
+			"name": "glusteravailabilityset",
 			"location": "[variables('location')]",
 			"apiVersion": "[variables('apiVersionCompute')]",
 			"properties": {}
@@ -925,6 +1049,81 @@
 					}
 				}]
 			}
+		},
+		{
+			"type": "Microsoft.Network/loadBalancers",
+			"name": "[variables('glusterLoadBalancerName')]",
+			"location": "[variables('location')]",
+			"apiVersion": "[variables('apiVersionNetwork')]",
+			"tags": {
+				"displayName": "OpenShiftGlusterLB"
+			},
+			"dependsOn": [
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('glusterLbPublicIpDnsLabel'))]"
+			],
+			"properties": {
+				"frontendIPConfigurations": [{
+					"name": "LoadBalancerFrontEnd",
+					"properties": {
+						"publicIPAddress": {
+							"id": "[variables('glusterPublicIpAddressId')]"
+						}
+					}
+				}],
+				"backendAddressPools": [{
+					"name": "loadBalancerBackEnd"
+				}],
+				"loadBalancingRules": [{
+					"name": "OpenShiftRouterHTTP",
+					"properties": {
+						"frontendIPConfiguration": {
+							"id": "[variables('glusterLbFrontEndConfigId')]"
+						},
+						"backendAddressPool": {
+							"id": "[variables('glusterLbBackendPoolId')]"
+						},
+						"protocol": "Tcp",
+						"frontendPort": 80,
+						"backendPort": 80,
+						"probe": {
+							"id": "[variables('glusterLbHttpProbeId')]"
+						}
+					}
+				}, {
+					"name": "OpenShiftRouterHTTPS",
+					"properties": {
+						"frontendIPConfiguration": {
+							"id": "[variables('glusterLbFrontEndConfigId')]"
+						},
+						"backendAddressPool": {
+							"id": "[variables('glusterLbBackendPoolId')]"
+						},
+						"protocol": "Tcp",
+						"frontendPort": 443,
+						"backendPort": 443,
+						"probe": {
+							"id": "[variables('glusterLbHttpsProbeId')]"
+						}
+					}
+				}],
+				"probes": [{
+					"name": "httpProbe",
+					"properties": {
+						"protocol": "Tcp",
+						"port": 80,
+						"intervalInSeconds": 5,
+						"numberOfProbes": 2
+					}
+				}, {
+					"name": "httpsProbe",
+					"properties": {
+						"protocol": "Tcp",
+						"port": 443,
+						"intervalInSeconds": 5,
+						"numberOfProbes": 2
+					}
+				}]
+			}
 		}, {
 			"type": "Microsoft.Network/networkInterfaces",
 			"name": "[concat(variables('openshiftMasterHostname'), '-', copyIndex(), '-nic')]",
@@ -997,6 +1196,40 @@
 				}],
 				"networkSecurityGroup": {
 					"id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(variables('openshiftInfraHostname'), '-nsg'))]"
+				}
+			}
+		}, {
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[concat(variables('openshiftGlusterHostname'), '-', copyIndex(), '-nic')]",
+			"location": "[variables('location')]",
+			"apiVersion": "[variables('apiVersionNetwork')]",
+			"tags": {
+				"displayName": "OpenShiftGlusterNetworkInterfaces"
+			},
+			"dependsOn": [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+				"[concat('Microsoft.Network/loadBalancers/', variables('glusterLoadBalancerName'))]",
+				"[concat('Microsoft.Network/networkSecurityGroups/', variables('openshiftGlusterHostname'), '-nsg')]"
+			],
+			"copy": {
+				"name": "glusterNicLoop",
+				"count": "[parameters('glusterInstanceCount')]"
+			},
+			"properties": {
+				"ipConfigurations": [{
+					"name": "[concat(variables('openshiftGlusterHostname'), copyIndex(), 'ipconfig')]",
+					"properties": {
+						"privateIPAllocationMethod": "Dynamic",
+						"subnet": {
+							"id": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'), '/subnets/', variables('masterSubnetName'))]"
+						},
+						"loadBalancerBackendAddressPools": [{
+							"id": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('infraLoadBalancerName'), '/backendAddressPools/loadBalancerBackEnd')]"
+						}]
+					}
+				}],
+				"networkSecurityGroup": {
+					"id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(variables('openshiftGlusterHostname'), '-nsg'))]"
 				}
 			}
 		}, {
@@ -1152,6 +1385,67 @@
 				}
 			}
 		}, {
+			"name": "[concat('glusterVmDeployment', copyindex())]",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "[variables('apiVersionLinkTemplate')]",
+			"dependsOn": [
+				"[resourceId('Microsoft.Storage/storageAccounts', variables('newStorageAccountGluster'))]",
+				"glusterNicLoop",
+				"glusteravailabilityset"
+			],
+			"copy": {
+				"name": "glusterVmLoop",
+				"count": "[parameters('glusterInstanceCount')]"
+			},
+			"properties": {
+				"mode": "Incremental",
+				"templateLink": {
+					"uri": "[variables('clusterGlusterDeploymentTemplateUrl')]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"location": {
+						"value": "[variables('location')]"
+					},
+					"sshKeyPath": {
+						"value": "[variables('sshKeyPath')]"
+					},
+					"sshPublicKey": {
+						"value": "[parameters('sshPublicKey')]"
+					},
+					"dataDiskSize": {
+						"value": "[parameters('dataDiskSize')]"
+					},
+					"adminUsername": {
+						"value": "[parameters('adminUsername')]"
+					},
+					"vmSize": {
+						"value": "[parameters('GlusterVmSize')]"
+					},
+					"availabilitySet": {
+						"value": "Glusteravailabilityset"
+					},
+					"osImage": {
+						"value": "[variables('osImage')]"
+					},
+					"hostname": {
+						"value": "[concat(variables('openshiftGlusterHostname'), '-', copyIndex())]"
+					},
+					"newStorageAccountOs": {
+						"value": "[variables('newStorageAccountGluster')]"
+					},
+					"newStorageAccountData": {
+						"value": "[variables('newStorageAccountGluster')]"
+					},
+					"apiVersionStorage": {
+						"value": "[variables('apiVersionStorage')]"
+					},
+					"apiVersionCompute": {
+						"value": "[variables('apiVersionCompute')]"
+					}
+				}
+			}
+		}, {
 			"name": "[concat('nodeVmDeployment', copyindex())]",
 			"type": "Microsoft.Resources/deployments",
 			"apiVersion": "[variables('apiVersionLinkTemplate')]",
@@ -1244,6 +1538,35 @@
 			}
 		}, {
 			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('openshiftGlusterHostname'), '-', copyIndex(), '/deployOpenShift')]",
+			"location": "[variables('location')]",
+			"apiVersion": "[variables('apiVersionCompute')]",
+			"tags": {
+				"displayName": "PrepGluster"
+			},
+			"dependsOn": [
+				"[concat('glusterVmDeployment', copyindex())]"
+			],
+			"copy": {
+				"name": "glusterPrepLoop",
+				"count": "[parameters('glusterInstanceCount')]"
+			},
+			"properties": {
+				"publisher": "Microsoft.Azure.Extensions",
+				"type": "CustomScript",
+				"typeHandlerVersion": "2.0",
+				"autoUpgradeMinorVersion": true,
+				"settings": {
+					"fileUris": [
+						"[variables('glusterPrepScriptUrl')]"
+					]
+				},
+				"protectedSettings": {
+					"commandToExecute": "[concat('bash ', variables('glusterPrepScriptFileName'), ' ', variables('newStorageAccountPersistentVolume1'), ' ', parameters('adminUsername'))]"
+				}
+			}
+		}, {
+			"type": "Microsoft.Compute/virtualMachines/extensions",
 			"name": "[concat(variables('openshiftInfraHostname'), '-', copyIndex(), '/prepNodes')]",
 			"location": "[variables('location')]",
 			"apiVersion": "[variables('apiVersionCompute')]",
@@ -1309,6 +1632,7 @@
 				"[resourceId('Microsoft.Storage/storageAccounts', variables('newStorageAccountRegistry'))]",
 				"masterPrepLoop",
 				"infraPrepLoop",
+				"glusterPrepLoop",
 				"nodePrepLoop"
 			],
 			"properties": {
@@ -1348,6 +1672,9 @@
 					"openshiftInfraHostname": {
 						"value": "[variables('openshiftInfraHostname')]"
 					},
+					"openshiftGlusterHostname": {
+						"value": "[variables('openshiftGlusterHostname')]"
+					},
 					"openshiftNodeHostname": {
 						"value": "[variables('openshiftNodeHostname')]"
 					},
@@ -1356,6 +1683,9 @@
 					},
 					"infraInstanceCount": {
 						"value": "[parameters('infraInstanceCount')]"
+					},
+					"glusterInstanceCount": {
+						"value": "[parameters('glusterInstanceCount')]"
 					},
 					"nodeInstanceCount": {
 						"value": "[parameters('nodeInstanceCount')]"
@@ -1417,6 +1747,10 @@
 		"Infra Storage Account Name": {
 			"type": "string",
 			"value": "[variables('newStorageAccountInfra')]"
+		},
+		"GlusterFS Storage Account Name": {
+			"type": "string",
+			"value": "[variables('newStorageAccountGluster')]"
 		}
 	}
 }

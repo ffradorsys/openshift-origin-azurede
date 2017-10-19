@@ -26,10 +26,13 @@ RESOURCEGROUP=${19}
 LOCATION=${20}
 STORAGEACCOUNT1=${21}
 SAKEY1=${22}
+GLUSTER=${23}
+GLUSTERCOUNT=${24}
 
 MASTERLOOP=$((MASTERCOUNT - 1))
 INFRALOOP=$((INFRACOUNT - 1))
 NODELOOP=$((NODECOUNT - 1))
+GLUSTERLOOP=$((GLUSTERCOUNT - 1))
 
 # Generate private keys for use by Ansible
 echo $(date) " - Generating Private keys for use by Ansible for OpenShift Installation"
@@ -114,7 +117,7 @@ cat > /home/${SUDOUSER}/dockerregistry.yml <<EOF
     description: "Set registry to use Azure Storage"
   tasks:
   - name: Configure docker-registry to use Azure Storage
-    shell: oc env dc docker-registry -e REGISTRY_STORAGE=azure -e REGISTRY_STORAGE_AZURE_ACCOUNTNAME=$REGISTRYSA -e REGISTRY_STORAGE_AZURE_ACCOUNTKEY=$ACCOUNTKEY -e REGISTRY_STORAGE_AZURE_CONTAINER=registry
+    shell: oc env dc docker-registry -e REGISTRY_STORAGE=azure -e REGISTRY_STORAGE_AZURE_ACCOUNTNAME=$REGISTRYSA -e REGISTRY_STORAGE_AZURE_ACCOUNTKEY=$ACCOUNTKEY -e REGISTRY_STORAGE_AZURE_CONTAINER=registry -e REGISTRY_STORAGE_AZURE_REALM=core.cloudapi.de
 EOF
 
 # Run on MASTER-0 - configure Storage Class
@@ -185,6 +188,7 @@ cat > /home/${SUDOUSER}/setup-azure-master.yml <<EOF
           "subscriptionID" : "{{ g_subscriptionId }}",
           "tenantID" : "{{ g_tenantId }}",
           "resourceGroup": "{{ g_resourceGroup }}",
+          "location": "{{ g_location }}",
         } 
     notify:
     - restart origin-master-api
@@ -251,6 +255,7 @@ cat > /home/${SUDOUSER}/setup-azure-node-master.yml <<EOF
           "subscriptionID" : "{{ g_subscriptionId }}",
           "tenantID" : "{{ g_tenantId }}",
           "resourceGroup": "{{ g_resourceGroup }}",
+          "location": "{{ g_location }}",
         } 
     notify:
     - restart origin-node
@@ -306,6 +311,7 @@ cat > /home/${SUDOUSER}/setup-azure-node.yml <<EOF
           "subscriptionID" : "{{ g_subscriptionId }}",
           "tenantID" : "{{ g_tenantId }}",
           "resourceGroup": "{{ g_resourceGroup }}",
+          "location": "{{ g_location }}",
         } 
     notify:
     - restart origin-node
@@ -362,6 +368,7 @@ nodes
 etcd
 master0
 new_nodes
+glusterfs
 
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
@@ -384,6 +391,9 @@ openshift_disable_check=disk_availability,memory_availability
 openshift_router_selector='type=infra'
 openshift_registry_selector='type=infra'
 
+openshift_storage_glusterfs_namespace=glusterfs
+openshift_storage_glusterfs_name=storage
+
 openshift_master_cluster_method=native
 openshift_master_cluster_hostname=$MASTERPUBLICIPHOSTNAME
 openshift_master_cluster_public_hostname=$MASTERPUBLICIPHOSTNAME
@@ -398,7 +408,10 @@ $MASTER-[0:${MASTERLOOP}]
 
 # host group for etcd
 [etcd]
-$MASTER-[0:${MASTERLOOP}] 
+$MASTER-[0:${MASTERLOOP}]
+
+[glusterfs]
+$GLUSTER-[0:${GLUSTERLOOP}]
 
 [master0]
 $MASTER-0
@@ -517,6 +530,7 @@ nodes
 etcd
 master0
 new_nodes
+glusterfs
 
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
@@ -538,6 +552,9 @@ openshift_disable_check=disk_availability,memory_availability
 # default selectors for router and registry services
 openshift_router_selector='type=infra'
 openshift_registry_selector='type=infra'
+
+openshift_storage_glusterfs_namespace=glusterfs
+openshift_storage_glusterfs_name=storage
 
 openshift_metrics_install_metrics=True
 openshift_metrics_cassandra_storage_type=dynamic
@@ -563,6 +580,10 @@ $MASTER-[0:${MASTERLOOP}]
 [etcd]
 $MASTER-[0:${MASTERLOOP}]
 
+# host group for [glusterfs]
+[glusterfs]
+$GLUSTER-[0:${GLUSTERLOOP}]
+
 [master0]
 $MASTER-0
 
@@ -582,6 +603,13 @@ done
 for (( c=0; c<$INFRACOUNT; c++ ))
 do
   echo "$INFRA-$c openshift_node_labels=\"{'type': 'infra', 'zone': 'default'}\" openshift_hostname=$INFRA-$c" >> /etc/ansible/hosts
+done
+
+# Loop to add GlusterFS Nodes
+
+for (( c=0; c<$GLUSTERCOUNT; c++ ))
+do
+  echo "$GLUSTER-$c glusterfs_hostname=$GLUSTER-$c" glusterfs_devices='[ "/dev/sdb" ]' >> /etc/ansible/hosts
 done
 
 # Loop to add Nodes

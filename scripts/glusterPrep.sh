@@ -25,21 +25,6 @@ sed -i -e "s#^OPTIONS='--selinux-enabled'#OPTIONS='--selinux-enabled --insecure-
 echo $(date) " - Installing htop"
 yum -y --enablerepo=epel install htop
 
-# Create thin pool logical volume for Docker
-echo $(date) " - Creating thin pool logical volume for Docker and staring service"
-
-DOCKERVG=$( parted -m /dev/sda print all 2>/dev/null | grep unknown | grep /dev/sd | cut -d':' -f1 )
-
-echo "DEVS=${DOCKERVG}" >> /etc/sysconfig/docker-storage-setup
-echo "VG=docker-vg" >> /etc/sysconfig/docker-storage-setup
-docker-storage-setup
-if [ $? -eq 0 ]
-then
-   echo "Docker thin pool logical volume created successfully"
-else
-   echo "Error creating logical volume for Docker"
-   exit 5
-fi
 
 # Enable and start Docker services
 
