@@ -1400,7 +1400,7 @@
 			"properties": {
 				"mode": "Incremental",
 				"templateLink": {
-					"uri": "[variables('clusterGlusterDeploymentTemplateUrl')]",
+					"uri": "[variables('clusterNodeDeploymentTemplateUrl')]",
 					"contentVersion": "1.0.0.0"
 				},
 				"parameters": {
